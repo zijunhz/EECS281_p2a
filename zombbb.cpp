@@ -79,17 +79,29 @@ class Zombie {
         }
     };
     struct LessRoundFirst {
+        /**
+         * @brief if zombie a is more likely to have less round, a has lower priority
+         *
+         * @param a
+         * @param b
+         * @return true
+         * @return false
+         */
         bool operator()(const Zombie* const a, const Zombie* const b) {
-            return a->round > b->round ||
-                   (a->round == b->round && a->hp > b->hp) ||
-                   (a->round == b->round && a->hp == b->hp && a->name > b->name);
+            return a->round < b->round || (a->round == b->round && a->name < b->name);
         }
     };
     struct MoreRoundFirst {
+        /**
+         * @brief  if zombie a is more likely to have more round, a has lower priority
+         *
+         * @param a
+         * @param b
+         * @return true
+         * @return false
+         */
         bool operator()(const Zombie* const a, const Zombie* const b) {
-            return a->eta > b->eta ||
-                   (a->eta == b->eta && a->hp > b->hp) ||
-                   (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
+            return a->round > b->round || (a->round == b->round && a->name < b->name);
         }
     };
 };
