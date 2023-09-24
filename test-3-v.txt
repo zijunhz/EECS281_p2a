@@ -1,0 +1,21 @@
+# test case 0 with --verbose
+quiver-capacity: 30
+random-seed: 19260817
+max-rand-distance: 50
+max-rand-speed: 55
+max-rand-health: 2
+---
+r: 1
+rand: 10
+named-zombies: 3
+MarkSchlissel distance: 150 speed: 4 health: 40
+MarySueColeman distance: 900 speed: 3 health: 40
+LeeBollinger distance: 100 speed: 1 health: 40
+---
+r: 2
+rand: 20
+name: 0
+---
+r: 3
+rand: 15
+name: 0
