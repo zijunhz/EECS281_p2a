@@ -1,4 +1,4 @@
 /.vscode
 *.gz
-myout.txt
+myout*.txt
 *_debug

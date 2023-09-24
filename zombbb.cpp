@@ -68,6 +68,9 @@ class Zombie {
         swap(round, temp.round);
         return *this;
     }
+    void print();
+    bool moveAndTryAttack(const SimulatorSettings& simSets);
+    uint32_t takeDamage(uint32_t quiverCap, uint32_t curRound);
     struct LessEtaFirst {
         bool operator()(const Zombie* const a, const Zombie* const b) {
             return a->eta > b->eta ||
@@ -75,15 +78,26 @@ class Zombie {
                    (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
         }
     };
-    void print();
-    bool moveAndTryAttack(const SimulatorSettings& simSets);
-    uint32_t takeDamage(uint32_t quiverCap, uint32_t curRound);
+    struct LessRoundFirst {
+        bool operator()(const Zombie* const a, const Zombie* const b) {
+            return a->round > b->round ||
+                   (a->round == b->round && a->hp > b->hp) ||
+                   (a->round == b->round && a->hp == b->hp && a->name > b->name);
+        }
+    };
+    struct MoreRoundFirst {
+        bool operator()(const Zombie* const a, const Zombie* const b) {
+            return a->eta > b->eta ||
+                   (a->eta == b->eta && a->hp > b->hp) ||
+                   (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
+        }
+    };
 };
 
 class RollingQueue {
    public:
-    uint32_t cap;   // 0~cap-1
-    uint32_t size;  // head~tail-1  if size==cap-2, must double cap, ptr==tail->end
+    int32_t cap;   // 0~cap-1
+    int32_t size;  // head~tail-1  if size==cap-2, must double cap, ptr==tail->end
     int32_t head;
     int32_t tail;
     Zombie** data;
@@ -106,20 +120,38 @@ class RollingQueue {
     void push(Zombie* z);
 };
 
+class StatisticsData {
+   public:
+    vector<Zombie*> firstKilled;
+    vector<Zombie*> lastKilled;
+    uint32_t lastKilledHead;
+    uint32_t lastKilledTail;
+    priority_queue<Zombie*, vector<Zombie*>, Zombie::LessRoundFirst> pqLessRound;
+    priority_queue<Zombie*, vector<Zombie*>, Zombie::MoreRoundFirst> pqMoreRound;
+    StatisticsData()
+        : lastKilledHead(0), lastKilledTail(0) {}
+};
+
 Zombie* getRandomZombie();
 
+void deleteZombieInstances(vector<Zombie*>& vec);
+
 int main(int argc, char** argv) {
+    vector<Zombie*> zombieVec;
     try {
         ios_base::sync_with_stdio(false);
-        SimulatorSettings simSets(argc, argv);
-        vector<Zombie> zombieVec;                                              // vector that stores all zombie instances
+        SimulatorSettings simSets(argc, argv);                                 // owner of all zombies
         priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst> pqEta;  // pq for zombie by eta
-        vector<Zombie*> livingZombie;
-
+        RollingQueue livingZombies;                                            // rolling queue for moving zombies forward
+        StatisticsData stat;
         // TODO: read in file, iterate rounds, move zombies alive and try attack, check brain, generate new zombies, shoot zombies
+        // main ends here
+        deleteZombieInstances(zombieVec);
     } catch (const Terminate& err) {
+        deleteZombieInstances(zombieVec);
         return 0;
     } catch (std::runtime_error& e) {
+        deleteZombieInstances(zombieVec);
         cerr << e.what() << std::endl;
         return 1;
     }
@@ -235,4 +267,9 @@ uint32_t Zombie::takeDamage(uint32_t quiverCap, uint32_t curRound) {
         // TODO: handle death
     }
     return damage;
+}
+
+void deleteZombieInstances(vector<Zombie*>& vec) {
+    for (Zombie*& item : vec)
+        delete item;
 }
