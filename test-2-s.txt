@@ -1,5 +1,5 @@
 # test case 0 with -m
-quiver-capacity: 200
+quiver-capacity: 15
 random-seed: 23
 max-rand-distance: 50
 max-rand-speed: 100
@@ -17,5 +17,5 @@ rand: 20
 name: 0
 ---
 r: 3
-rand: 15
+rand: 17
 name: 0

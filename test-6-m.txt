@@ -1,0 +1,9 @@
+# test case 0 with -m
+quiver-capacity: 1
+random-seed: 934
+max-rand-distance: 500000
+max-rand-speed: 1
+max-rand-health: 2
+---
+r: 1
+rand: 50
