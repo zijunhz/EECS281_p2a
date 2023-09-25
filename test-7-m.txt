@@ -7,3 +7,4 @@ max-rand-health: 2
 ---
 r: 1
 rand: 50
+name: 0

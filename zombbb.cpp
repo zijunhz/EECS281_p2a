@@ -1,6 +1,7 @@
 // identifier: 9504853406CBAC39EE89AA3AD238AA12CA198043
 
 #include <getopt.h>
+#include <cstdio>
 #include <iostream>
 #include <queue>
 #include <string>
@@ -82,7 +83,7 @@ class Zombie {
                    (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
         }
     };
-    struct LessRoundFirst {
+    struct MoreRoundFirst {
         /**
          * @brief if zombie a is more likely to have less round, a has lower priority
          *
@@ -95,7 +96,7 @@ class Zombie {
             return a->round < b->round || (a->round == b->round && a->name < b->name);
         }
     };
-    struct MoreRoundFirst {
+    struct LessRoundFirst {
         /**
          * @brief  if zombie a is more likely to have more round, a has lower priority
          *
@@ -142,8 +143,8 @@ class StatisticsData {
     vector<Zombie*> lastKilled;
     uint32_t lastKilledHead;
     uint32_t lastKilledTail;
-    priority_queue<Zombie*, vector<Zombie*>, Zombie::LessRoundFirst> pqLessRoundStat;
-    priority_queue<Zombie*, vector<Zombie*>, Zombie::MoreRoundFirst> pqMoreRoundStat;
+    priority_queue<Zombie*, vector<Zombie*>, Zombie::MoreRoundFirst> pqLessRoundStat;
+    priority_queue<Zombie*, vector<Zombie*>, Zombie::LessRoundFirst> pqMoreRoundStat;
     priority_queue<Zombie*, vector<Zombie*>, Zombie::LessRoundFirst> pqLessRoundMedian;
     priority_queue<Zombie*, vector<Zombie*>, Zombie::MoreRoundFirst> pqMoreRoundMedian;
     StatisticsData()
@@ -185,7 +186,7 @@ Zombie* shootZombies(uint32_t curRound,
 int main(int argc, char** argv) {
     vector<Zombie*> zombieVec;
     try {
-        ios_base::sync_with_stdio(false);
+        // ios_base::sync_with_stdio(false);
         SimulatorSettings simSets(argc, argv);                                 // owner of all zombies
         priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst> pqEta;  // pq for zombie by eta
         RollingQueue livingZombies;                                            // rolling queue for moving zombies forward
@@ -200,7 +201,8 @@ int main(int argc, char** argv) {
         uint32_t killedCnt = 0;
         while ((!defeated) && (killedCnt < zombieVec.size() || hasNextRound)) {
             if (simSets.isVerbose)
-                cout << "Round: " << curRound << "\n";
+                printf("Round: %d\n", curRound);
+            // cout << "Round: " << curRound << "\n";
             // printLivingZombies(livingZombies);
             /*    move zombies forward    */
             theOneAndOnlyZombieKing = moveAllLivingZombies(livingZombies, simSets.isVerbose);
@@ -219,9 +221,10 @@ int main(int argc, char** argv) {
             Zombie* lastKilledInRound = shootZombies(curRound, pqEta, stat, simSets, killedCnt);
             if (lastKilledInRound != nullptr)
                 lastKilled = lastKilledInRound;
-            if (simSets.isMedian) {
-                uint32_t median = (((stat.pqLessRoundMedian.size() + stat.pqMoreRoundMedian.size()) & 1) == 1) ? stat.pqMoreRoundMedian.top()->round : ((stat.pqMoreRoundMedian.top()->round + stat.pqLessRoundMedian.top()->round) >> 1);
-                cout << "At the end of round " << curRound << ", the median zombie lifetime is " << median << "\n";
+            if (simSets.isMedian && killedCnt > 0) {
+                uint32_t median = (killedCnt & 1) == 1 ? stat.pqMoreRoundMedian.top()->round : (stat.pqMoreRoundMedian.top()->round + stat.pqLessRoundMedian.top()->round) >> 1;
+                printf("At the end of round %d, the median zombie lifetime is %d\n", curRound, median);
+                // cout << "At the end of round " << curRound << ", the median zombie lifetime is " << median << "\n";
             }
             curRound++;
         }
@@ -298,16 +301,18 @@ Zombie* getRandomZombie(uint32_t curRound) {
 }
 
 void Zombie::print() {
-    cout << name
-         << " (distance: " << dis
-         << ", speed: " << v
-         << ", health: " << hp << ")\n";
+    printf("%s (distance: %d, speed: %d, health: %d)\n", name.c_str(), dis, v, hp);
+    // cout << name
+    //      << " (distance: " << dis
+    //      << ", speed: " << v
+    //      << ", health: " << hp << ")\n";
 }
 
 bool Zombie::moveAndTryAttack(bool isVerbose) {
     dis -= min(dis, v);
     if (isVerbose) {
-        cout << "Moved: ";
+        printf("Moved: ");
+        // cout << "Moved: ";
         print();
     }
     return dis == 0;
@@ -383,7 +388,8 @@ void addNewZombie(Zombie* zombie,
     livingZombies.push(zombie);
     pqEta.push(zombie);
     if (isVerbose) {
-        cout << "Created: ";
+        printf("Created: ");
+        // cout << "Created: ";
         zombie->print();
     }
 }
@@ -445,16 +451,24 @@ void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
 void Zombie::isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& simSets) {
     round = curRound - round + 1;
     if (simSets.isVerbose) {
-        cout << "Destroyed: ";
+        printf("Destroyed: ");
+        // cout << "Destroyed: ";
         print();
     }
     if (simSets.isMedian) {
-        stat.pqMoreRoundMedian.push(this);
+        if ((stat.pqMoreRoundMedian.empty()) || stat.pqMoreRoundMedian.top()->round >= round)
+            stat.pqMoreRoundMedian.push(this);
+        else
+            stat.pqLessRoundMedian.push(this);
+
         // more.size >= less.size
-        while (stat.pqMoreRoundMedian.size() > stat.pqLessRoundMedian.size() + 1) {
-            Zombie* zombie = stat.pqMoreRoundMedian.top();
+        if (stat.pqMoreRoundMedian.size() > stat.pqLessRoundMedian.size() + 1) {
+            stat.pqLessRoundMedian.push(stat.pqMoreRoundMedian.top());
             stat.pqMoreRoundMedian.pop();
-            stat.pqLessRoundMedian.push(zombie);
+        }
+        if (stat.pqMoreRoundMedian.size() < stat.pqLessRoundMedian.size()) {
+            stat.pqMoreRoundMedian.push(stat.pqLessRoundMedian.top());
+            stat.pqLessRoundMedian.pop();
         }
     }
     if (simSets.isStatistics) {
@@ -504,12 +518,14 @@ void StatisticsData::print(uint32_t curRound, RollingQueue& livingZombies, Simul
     cout << "Zombies still active: " << livingZombieCnt << "\n";
     cout << "First zombies killed:\n";
     for (uint32_t i = 0; i < min(simSets.statN, uint32_t(firstKilled.size())); i++)
-        cout << firstKilled[i]->name << " " << i + 1 << "\n";
+        printf("%s %d\n", firstKilled[i]->name.c_str(), i + 1);
+    // cout << firstKilled[i]->name << " " << i + 1 << "\n";
     cout << "Last zombies killed:\n";
     uint32_t ii = lastKilledTail == 0 ? uint32_t(lastKilled.size()) - 1 : lastKilledTail - 1;
     uint32_t jj = lastKilledTail > lastKilledHead ? lastKilledTail - lastKilledHead : lastKilledTail + uint32_t(lastKilled.size()) - lastKilledHead;
     for (; jj > 0; jj--) {
-        cout << lastKilled[ii]->name << " " << jj << "\n";
+        printf("%s %d\n", lastKilled[ii]->name.c_str(), jj);
+        // cout << lastKilled[ii]->name << " " << jj << "\n";
         ii = ii == 0 ? uint32_t(lastKilled.size()) - 1 : ii - 1;
     }
     vector<Zombie*> ans;
@@ -519,7 +535,8 @@ void StatisticsData::print(uint32_t curRound, RollingQueue& livingZombies, Simul
         pqMoreRoundStat.pop();
     }
     while (!ans.empty()) {
-        cout << ans.back()->name << " " << ans.back()->round << "\n";
+        printf("%s %d\n", ans.back()->name.c_str(), ans.back()->round);
+        // cout << ans.back()->name << " " << ans.back()->round << "\n";
         ans.pop_back();
     }
     cout << "Least active zombies:\n";
@@ -528,7 +545,8 @@ void StatisticsData::print(uint32_t curRound, RollingQueue& livingZombies, Simul
         pqLessRoundStat.pop();
     }
     while (!ans.empty()) {
-        cout << ans.back()->name << " " << ans.back()->round << "\n";
+        printf("%s %d\n", ans.back()->name.c_str(), ans.back()->round);
+        // cout << ans.back()->name << " " << ans.back()->round << "\n";
         ans.pop_back();
     }
 }
