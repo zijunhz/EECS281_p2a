@@ -191,7 +191,6 @@ int main(int argc, char** argv) {
         priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst> pqEta;  // pq for zombie by eta
         RollingQueue livingZombies;                                            // rolling queue for moving zombies forward
         StatisticsData stat;
-        // TODO: read in file, iterate rounds, move zombies alive and try attack, check brain, generate new zombies, shoot zombies
         uint32_t curRound = 1;
         uint32_t nextRound = 0;
         bool hasNextRound = true;
