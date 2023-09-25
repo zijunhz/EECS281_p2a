@@ -2,3 +2,4 @@
 *.gz
 myout*.txt
 *_debug
+/.VSCodeCounter
