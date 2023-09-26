@@ -66,6 +66,7 @@ TESTSOURCES = $(wildcard test*.cpp)
 # list of sources used in project
 SOURCES     = $(wildcard *.cpp)
 SOURCES     := $(filter-out $(TESTSOURCES), $(SOURCES))
+SOURCES      :=$(filter-out zombbbfast.cpp, $(SOURCES))
 # list of objects used in project
 OBJECTS     = $(SOURCES:%.cpp=%.o)
 
