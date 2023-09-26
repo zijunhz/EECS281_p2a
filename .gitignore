@@ -4,3 +4,5 @@ myout*.txt
 *_debug
 /.VSCodeCounter
 /zombbb
+/perf*
+*_profile
