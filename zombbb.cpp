@@ -2,10 +2,12 @@
 
 #include <getopt.h>
 // #include <cstdio>
+#include <deque>
 #include <iostream>
 #include <queue>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 #include "P2random.h"
 using namespace std;
@@ -77,7 +79,6 @@ class Zombie {
     bool moveAndTryAttack(bool isVerbose);
     bool takeDamageAndIsDead(uint32_t& quiverCap);
     void isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& simSets);
-    void addToStat(StatisticsData& stat, SimulatorSettings& simSets);
     struct LessEtaFirst {
         bool operator()(const Zombie* const a, const Zombie* const b) {
             return a->eta > b->eta ||
@@ -128,26 +129,24 @@ class StatisticsData {
         lastKilled.push_back(nullptr);
     }
     void addZombie(Zombie* zombie, SimulatorSettings& simSets);
-    void print(uint32_t curRound, vector<Zombie*>& zombieVec, SimulatorSettings& simSets);
+    void print(uint32_t curRound, deque<Zombie>& zombieVec, SimulatorSettings& simSets);
 };
 
-Zombie* getRandomZombie(uint32_t curRound);
-
-void deleteZombieInstances(vector<Zombie*>& vec);
+inline Zombie getRandomZombie(uint32_t curRound);
 
 void readNextRound(uint32_t& nextRound, bool& hasNextRound);
 
-void addNewZombie(Zombie* zombie,
-                  vector<Zombie*>& zombieVec,
+void addNewZombie(Zombie zombie,
+                  deque<Zombie>& zombieVec,
                   priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                   bool isVerbose);
 
 void readNewZombies(uint32_t curRound,
-                    vector<Zombie*>& zombieVec,
+                    deque<Zombie>& zombieVec,
                     priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                     bool isVerbose);
 
-Zombie* moveAllLivingZombies(vector<Zombie*>& zombieVec, bool isVerbose);
+Zombie* moveAllLivingZombies(deque<Zombie>& zombieVec, bool isVerbose);
 
 Zombie* shootZombies(uint32_t curRound,
                      priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
@@ -156,7 +155,7 @@ Zombie* shootZombies(uint32_t curRound,
                      uint32_t& killedCnt);
 
 int main(int argc, char** argv) {
-    vector<Zombie*> zombieVec;
+    deque<Zombie> zombieVec;
     try {
         ios_base::sync_with_stdio(false);
         SimulatorSettings simSets(argc, argv);                                 // owner of all zombies
@@ -208,12 +207,9 @@ int main(int argc, char** argv) {
             stat.print(curRound, zombieVec, simSets);
         // printLivingZombies(livingZombies);
         // main ends here
-        deleteZombieInstances(zombieVec);
     } catch (const Terminate& err) {
-        deleteZombieInstances(zombieVec);
         return 0;
     } catch (std::runtime_error& e) {
-        deleteZombieInstances(zombieVec);
         cerr << e.what() << std::endl;
         return 1;
     }
@@ -262,13 +258,12 @@ void SimulatorSettings::readSettings() {
     P2random::initialize(randSeed, maxRandDis, maxRandV, maxRandHp);
 }
 
-Zombie* getRandomZombie(uint32_t curRound) {
+inline Zombie getRandomZombie(uint32_t curRound) {
     string name = P2random::getNextZombieName();
     uint32_t dis = P2random::getNextZombieDistance();
     uint32_t v = P2random::getNextZombieSpeed();
     uint32_t hp = P2random::getNextZombieHealth();
-    Zombie* res = new Zombie(curRound, name, dis, v, hp);
-    return res;
+    return Zombie(curRound, name, dis, v, hp);
 }
 
 void Zombie::print() {
@@ -296,11 +291,6 @@ bool Zombie::takeDamageAndIsDead(uint32_t& quiverCap) {
     return hp == 0;
 }
 
-void deleteZombieInstances(vector<Zombie*>& vec) {
-    for (Zombie*& item : vec)
-        delete item;
-}
-
 void readNextRound(uint32_t& nextRound, bool& hasNextRound) {
     string s;
     if (cin >> s) {
@@ -311,36 +301,51 @@ void readNextRound(uint32_t& nextRound, bool& hasNextRound) {
     }
 }
 
-void addNewZombie(Zombie* zombie,
-                  vector<Zombie*>& zombieVec,
+void addNewZombie(Zombie zombie,
+                  deque<Zombie>& zombieVec,
                   priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                   bool isVerbose) {
     zombieVec.push_back(zombie);
-    pqEta.push(zombie);
+    pqEta.push(&(zombieVec.back()));
     if (isVerbose) {
         // printf("Created: ");
         cout << "Created: ";
-        zombie->print();
+        zombie.print();
     }
 }
 
 void readNewZombies(uint32_t curRound,
-                    vector<Zombie*>& zombieVec,
+                    deque<Zombie>& zombieVec,
                     priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                     bool isVerbose) {
     string s;
     uint32_t randNum = 0;
     uint32_t nameNum = 0;
     cin >> s >> randNum >> s >> nameNum;
-    for (uint32_t i = 0; i < randNum; i++)
-        addNewZombie(getRandomZombie(curRound), zombieVec, pqEta, isVerbose);
+    for (uint32_t i = 0; i < randNum; i++) {
+        zombieVec.push_back(getRandomZombie(curRound));
+        pqEta.push(&(zombieVec.back()));
+        if (isVerbose) {
+            // printf("Created: ");
+            cout << "Created: ";
+            zombieVec.back().print();
+        }
+    }
+    // addNewZombie(getRandomZombie(curRound), zombieVec, pqEta, isVerbose);
     for (uint32_t i = 0; i < nameNum; i++) {
         string name;
         uint32_t dis;
         uint32_t v;
         uint32_t hp;
         cin >> name >> s >> dis >> s >> v >> s >> hp;
-        addNewZombie(new Zombie(curRound, name, dis, v, hp), zombieVec, pqEta, isVerbose);
+        zombieVec.push_back(Zombie(curRound, name, dis, v, hp));
+        pqEta.push(&(zombieVec.back()));
+        if (isVerbose) {
+            // printf("Created: ");
+            cout << "Created: ";
+            zombieVec.back().print();
+        }
+        // addNewZombie(Zombie(curRound, name, dis, v, hp), zombieVec, pqEta, isVerbose);
     }
 }
 
@@ -370,14 +375,14 @@ void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
     }
 }
 
-Zombie* moveAllLivingZombies(vector<Zombie*>& zombieVec, bool isVerbose) {
+Zombie* moveAllLivingZombies(deque<Zombie>& zombieVec, bool isVerbose) {
     Zombie* theOneAndOnlyZombie = nullptr;
-    for (Zombie*& zombie : zombieVec) {
-        if (zombie->hp == 0)
+    for (Zombie& zombie : zombieVec) {
+        if (zombie.hp == 0)
             continue;
-        if (zombie->moveAndTryAttack(isVerbose)) {
+        if (zombie.moveAndTryAttack(isVerbose)) {
             if (theOneAndOnlyZombie == nullptr)
-                theOneAndOnlyZombie = zombie;
+                theOneAndOnlyZombie = &zombie;
         }
     }
     return theOneAndOnlyZombie;
@@ -475,15 +480,15 @@ Zombie* shootZombies(uint32_t curRound,
 //     }
 // }
 
-void StatisticsData::print(uint32_t curRound, vector<Zombie*>& zombieVec, SimulatorSettings& simSets) {
+void StatisticsData::print(uint32_t curRound, deque<Zombie>& zombieVec, SimulatorSettings& simSets) {
     uint32_t livingZombieCnt = 0;
 
-    for (Zombie*& zombie : zombieVec) {
-        if (zombie->hp == 0)
+    for (Zombie& zombie : zombieVec) {
+        if (zombie.hp == 0)
             continue;
         livingZombieCnt++;
-        zombie->round = curRound - zombie->round + 1;
-        addZombie(zombie, simSets);
+        zombie.round = curRound - zombie.round + 1;
+        addZombie(&zombie, simSets);
     }
     stringstream output;
     cout << "Zombies still active: " << livingZombieCnt << "\n";
@@ -504,7 +509,7 @@ void StatisticsData::print(uint32_t curRound, vector<Zombie*>& zombieVec, Simula
     }
 
     vector<Zombie*> ans;
-    ans.reserve(max(pqMoreRoundStat.size(), pqLessRoundStat.size()));
+    ans.reserve(pqMoreRoundStat.size());
     cout << "Most active zombies:\n";
     while (!pqMoreRoundStat.empty()) {
         ans.push_back(pqMoreRoundStat.top());
