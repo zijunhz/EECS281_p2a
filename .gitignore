@@ -6,4 +6,4 @@ myout*.txt
 /zombbb
 /perf*
 *_profile
-*.o
+/*.o
