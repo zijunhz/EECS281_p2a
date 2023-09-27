@@ -80,7 +80,7 @@ class Zombie {
     bool takeDamageAndIsDead(uint32_t& quiverCap);
     void isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& simSets);
     struct LessEtaFirst {
-        bool operator()(const Zombie* const a, const Zombie* const b) {
+        bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->eta > b->eta ||
                    (a->eta == b->eta && a->hp > b->hp) ||
                    (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
@@ -95,7 +95,7 @@ class Zombie {
          * @return true
          * @return false
          */
-        bool operator()(const Zombie* const a, const Zombie* const b) {
+        bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->round < b->round || (a->round == b->round && a->name < b->name);
         }
     };
@@ -108,7 +108,7 @@ class Zombie {
          * @return true
          * @return false
          */
-        bool operator()(const Zombie* const a, const Zombie* const b) {
+        bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->round > b->round || (a->round == b->round && a->name < b->name);
         }
     };
@@ -367,11 +367,27 @@ void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
                 lastKilledHead = 0;
         }
     }
-    pqLessRoundStat.push(zombie);
-    pqMoreRoundStat.push(zombie);
-    if (pqLessRoundStat.size() > simSets.statN) {
-        pqLessRoundStat.pop();
-        pqMoreRoundStat.pop();
+    // pqLessRoundStat.push(zombie);
+    // pqMoreRoundStat.push(zombie);
+    // if (simSets.statN < pqLessRoundStat.size()) {
+    //     pqLessRoundStat.pop();
+    //     pqMoreRoundStat.pop();
+    // }
+
+    if (pqLessRoundStat.size() >= simSets.statN) {
+        Zombie::LessRoundFirst lessFirst;
+        Zombie::MoreRoundFirst moreFirst;
+        if (lessFirst(zombie, pqMoreRoundStat.top())) {
+            pqMoreRoundStat.pop();
+            pqMoreRoundStat.push(zombie);
+        }
+        if (moreFirst(zombie, pqLessRoundStat.top())) {
+            pqLessRoundStat.pop();
+            pqLessRoundStat.push(zombie);
+        }
+    } else {
+        pqLessRoundStat.push(zombie);
+        pqMoreRoundStat.push(zombie);
     }
 }
 
@@ -425,7 +441,10 @@ Zombie* shootZombies(uint32_t curRound,
     Zombie* res = nullptr;
     while (qCap > 0 && (!pqEta.empty())) {
         Zombie* zombie = pqEta.top();
-        if (zombie->takeDamageAndIsDead(qCap)) {
+        uint32_t damage = min(zombie->hp, qCap);
+        zombie->hp -= damage;
+        qCap -= damage;
+        if (zombie->hp == 0) {
             ++killedCnt;
             pqEta.pop();
             zombie->isDead(curRound, stat, simSets);

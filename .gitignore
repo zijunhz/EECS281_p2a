@@ -8,3 +8,4 @@ myout*.txt
 *_profile
 /*.o
 /zombbbfast
+/zombbb_valgrind
