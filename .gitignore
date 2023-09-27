@@ -7,3 +7,4 @@ myout*.txt
 /perf*
 *_profile
 /*.o
+/zombbbfast
