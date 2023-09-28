@@ -10,7 +10,6 @@
 #include <vector>
 #include "P2random.h"
 using namespace std;
-#define RollingQueueInitialSize 1000
 
 class Terminate {
    public:
@@ -79,7 +78,7 @@ class Zombie {
     bool takeDamageAndIsDead(uint32_t& quiverCap);
     void isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& simSets);
     struct LessEtaFirst {
-        bool operator()(const Zombie* const a, const Zombie* const b) const {
+        inline bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->eta > b->eta ||
                    (a->eta == b->eta && a->hp > b->hp) ||
                    (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
@@ -94,7 +93,7 @@ class Zombie {
          * @return true
          * @return false
          */
-        bool operator()(const Zombie* const a, const Zombie* const b) const {
+        inline bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->round < b->round || (a->round == b->round && a->name < b->name);
         }
     };
@@ -107,7 +106,7 @@ class Zombie {
          * @return true
          * @return false
          */
-        bool operator()(const Zombie* const a, const Zombie* const b) const {
+        inline bool operator()(const Zombie* const a, const Zombie* const b) const {
             return a->round > b->round || (a->round == b->round && a->name < b->name);
         }
     };
@@ -174,22 +173,20 @@ int main(int argc, char** argv) {
             // cout << "Round: " << curRound << "\n";
             // printLivingZombies(livingZombies);
             /*    move zombies forward    */
-            bool res = moveAllLivingZombies(zombieVec);
+            defeated = moveAllLivingZombies(zombieVec);
             if (simSets.isVerbose)
                 for (auto zombie : zombieVec)
                     if (zombie.hp > 0) {
                         printf("Moved: ");
                         zombie.print();
                     }
-            if (res)
+            if (defeated) {
+                /*    brain got eaten, GG    */
                 for (auto zombie : zombieVec)
                     if (zombie.dis == 0) {
                         theOneAndOnlyZombieKing = &zombie;
                         break;
                     }
-            if (theOneAndOnlyZombieKing != nullptr) {
-                /*    brain got eaten, GG    */
-                defeated = true;
                 break;
             }
             /*    generate new zombies from input    */
