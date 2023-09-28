@@ -145,13 +145,12 @@ void readNewZombies(uint32_t curRound,
                     priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                     bool isVerbose);
 
-bool moveAllLivingZombies(deque<Zombie>& zombieVec, bool isVerbose);
+bool moveAllLivingZombies(deque<Zombie>& zombieVec);
 
 Zombie* shootZombies(uint32_t curRound,
                      priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                      StatisticsData& stat,
-                     SimulatorSettings& simSets,
-                     uint32_t& killedCnt);
+                     SimulatorSettings& simSets);
 
 int main(int argc, char** argv) {
     deque<Zombie> zombieVec;
@@ -169,14 +168,20 @@ int main(int argc, char** argv) {
         bool defeated = false;
         readNextRound(nextRound, hasNextRound);
         Zombie *theOneAndOnlyZombieKing = nullptr, *lastKilled = nullptr;
-        uint32_t killedCnt = 0;
-        while ((!defeated) && (killedCnt < zombieVec.size() || hasNextRound)) {
+        while ((!defeated) && (pqEta.size() > 0 || hasNextRound)) {
             if (simSets.isVerbose)
                 printf("Round: %d\n", curRound);
             // cout << "Round: " << curRound << "\n";
             // printLivingZombies(livingZombies);
             /*    move zombies forward    */
-            if (moveAllLivingZombies(zombieVec, simSets.isVerbose))
+            bool res = moveAllLivingZombies(zombieVec);
+            if (simSets.isVerbose)
+                for (auto zombie : zombieVec)
+                    if (zombie.hp > 0) {
+                        printf("Moved: ");
+                        zombie.print();
+                    }
+            if (res)
                 for (auto zombie : zombieVec)
                     if (zombie.dis == 0) {
                         theOneAndOnlyZombieKing = &zombie;
@@ -194,11 +199,11 @@ int main(int argc, char** argv) {
                 readNextRound(nextRound, hasNextRound);
             }
             /*    shoot    */
-            Zombie* lastKilledInRound = shootZombies(curRound, pqEta, stat, simSets, killedCnt);
+            Zombie* lastKilledInRound = shootZombies(curRound, pqEta, stat, simSets);
             if (lastKilledInRound != nullptr)
                 lastKilled = lastKilledInRound;
-            if (simSets.isMedian && killedCnt > 0) {
-                uint32_t median = (killedCnt & 1) == 1 ? stat.pqMoreRoundMedian.top()->round : (stat.pqMoreRoundMedian.top()->round + stat.pqLessRoundMedian.top()->round) >> 1;
+            if (simSets.isMedian && zombieVec.size() - pqEta.size() > 0) {
+                uint32_t median = ((zombieVec.size() - pqEta.size()) & 1) == 1 ? stat.pqMoreRoundMedian.top()->round : (stat.pqMoreRoundMedian.top()->round + stat.pqLessRoundMedian.top()->round) >> 1;
                 printf("At the end of round %d, the median zombie lifetime is %d\n", curRound, median);
                 // cout << "At the end of round " << curRound << ", the median zombie lifetime is " << median << "\n";
             }
@@ -280,16 +285,6 @@ void Zombie::print() {
     //      << " (distance: " << dis
     //      << ", speed: " << v
     //      << ", health: " << hp << ")\n";
-}
-
-bool Zombie::moveAndTryAttack(bool isVerbose) {
-    dis -= min(dis, v);
-    if (isVerbose) {
-        printf("Moved: ");
-        // cout << "Moved: ";
-        print();
-    }
-    return dis == 0;
 }
 
 bool Zombie::takeDamageAndIsDead(uint32_t& quiverCap) {
@@ -399,13 +394,13 @@ void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
     }
 }
 
-bool moveAllLivingZombies(deque<Zombie>& zombieVec, bool isVerbose) {
+bool moveAllLivingZombies(deque<Zombie>& zombieVec) {
     bool res = false;
     for (Zombie& zombie : zombieVec) {
         if (zombie.hp == 0)
             continue;
-        if (zombie.moveAndTryAttack(isVerbose))
-            res = true;
+        zombie.dis -= min(zombie.dis, zombie.v);
+        res &= zombie.dis == 0;
     }
     return res;
 }
@@ -441,8 +436,7 @@ void Zombie::isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& 
 Zombie* shootZombies(uint32_t curRound,
                      priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst>& pqEta,
                      StatisticsData& stat,
-                     SimulatorSettings& simSets,
-                     uint32_t& killedCnt) {
+                     SimulatorSettings& simSets) {
     uint32_t qCap = simSets.qCap;
     Zombie* res = nullptr;
     while (qCap > 0 && (!pqEta.empty())) {
@@ -451,7 +445,6 @@ Zombie* shootZombies(uint32_t curRound,
         zombie->hp -= damage;
         qCap -= damage;
         if (zombie->hp == 0) {
-            ++killedCnt;
             pqEta.pop();
             zombie->isDead(curRound, stat, simSets);
             res = zombie;
