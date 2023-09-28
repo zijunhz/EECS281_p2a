@@ -158,6 +158,8 @@ int main(int argc, char** argv) {
     deque<Zombie> zombieVec;
     try {
         ios_base::sync_with_stdio(false);
+        cin.tie(0);
+        cout.tie(0);
         SimulatorSettings simSets(argc, argv);                                 // owner of all zombies
         priority_queue<Zombie*, vector<Zombie*>, Zombie::LessEtaFirst> pqEta;  // pq for zombie by eta
 
