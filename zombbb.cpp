@@ -79,9 +79,12 @@ class Zombie {
     void isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& simSets);
     struct LessEtaFirst {
         inline bool operator()(const Zombie* const a, const Zombie* const b) const {
+            // return a->eta > b->eta ||
+            //        (a->eta == b->eta && a->hp > b->hp) ||
+            //        (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
             return a->eta > b->eta ||
-                   (a->eta == b->eta && a->hp > b->hp) ||
-                   (a->eta == b->eta && a->hp == b->hp && a->name > b->name);
+                   (a->eta == b->eta && (a->hp > b->hp ||
+                                         (a->hp == b->hp && a->name > b->name)));
         }
     };
     struct MoreRoundFirst {
@@ -180,12 +183,16 @@ int main(int argc, char** argv) {
             /*    move zombies forward    */
             defeated = moveAllLivingZombies(livingZombies, tail);
             if (simSets.isVerbose)
-                for (auto zombie : zombieVec)
-                    if (zombie.hp > 0) {
-                        // printf("Moved: ");
-                        cout << "Moved: ";
-                        zombie.print();
-                    }
+                for (size_t i = 0; i < tail; i++) {
+                    cout << "Moved: ";
+                    livingZombies[i]->print();
+                }
+            // for (auto zombie : zombieVec)
+            //     if (zombie.hp > 0) {
+            //         // printf("Moved: ");
+            //         cout << "Moved: ";
+            //         zombie.print();
+            //     }
             if (defeated) {
                 /*    brain got eaten, GG    */
                 for (auto zombie : zombieVec)
@@ -332,12 +339,11 @@ void readNewZombies(uint32_t curRound,
     cin >> s >> randNum >> s >> nameNum;
     for (uint32_t i = 0; i < randNum; ++i) {
         zombieVec.push_back(getRandomZombie(curRound));
-        if (tail < livingZombies.size()) {
-            livingZombies[tail++] = &(zombieVec.back());
-        } else {
-            tail++;
+        if (tail < livingZombies.size())
+            livingZombies[tail] = &(zombieVec.back());
+        else
             livingZombies.push_back(&(zombieVec.back()));
-        }
+        ++tail;
         pqEta.push(&(zombieVec.back()));
         if (isVerbose) {
             // printf("Created: ");
@@ -353,12 +359,11 @@ void readNewZombies(uint32_t curRound,
         uint32_t hp;
         cin >> name >> s >> dis >> s >> v >> s >> hp;
         zombieVec.push_back(Zombie(curRound, name, dis, v, hp));
-        if (tail < livingZombies.size()) {
-            livingZombies[tail++] = &(zombieVec.back());
-        } else {
-            tail++;
+        if (tail < livingZombies.size())
+            livingZombies[tail] = &(zombieVec.back());
+        else
             livingZombies.push_back(&(zombieVec.back()));
-        }
+        ++tail;
         pqEta.push(&(zombieVec.back()));
         if (isVerbose) {
             // printf("Created: ");
@@ -437,15 +442,15 @@ void StatisticsData::addLivingZombie(Zombie* zombie, uint32_t statN) {
 bool moveAllLivingZombies(vector<Zombie*>& livingZombies, size_t& tail) {
     bool res = false;
     size_t newTail = 0;
-    for (size_t search = 0; search < tail; search++) {
+    for (size_t search = 0; search < tail; ++search) {
         while (search < tail && livingZombies[search]->hp == 0)
-            search++;
+            ++search;
         if (search < tail) {
             livingZombies[newTail] = livingZombies[search];
             livingZombies[newTail]->dis -= min(livingZombies[newTail]->dis, livingZombies[newTail]->v);
             if (livingZombies[newTail]->dis == 0)
                 res = true;
-            newTail++;
+            ++newTail;
         }
     }
     tail = newTail;
