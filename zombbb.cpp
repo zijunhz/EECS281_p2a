@@ -210,6 +210,23 @@ int main(int argc, char** argv) {
             }
             /*    shoot    */
             Zombie* lastKilledInRound = shootZombies(curRound, pqEta, stat, simSets);
+
+            // uint32_t qCap = simSets.qCap;
+            // Zombie* lastKilledInRound = nullptr;
+            // while (qCap && (!pqEta.empty())) {
+            //     Zombie* zombie = pqEta.top();
+            //     uint32_t damage = min(zombie->hp, qCap);
+            //     zombie->hp -= damage;
+            //     qCap -= damage;
+            //     if (zombie->hp == 0) {
+            //         pqEta.pop();
+            //         zombie->isDead(curRound, stat, simSets);
+            //         lastKilledInRound = zombie;
+            //     }
+            // }
+
+            /*    end shoot    */
+
             if (lastKilledInRound != nullptr)
                 lastKilled = lastKilledInRound;
             if (simSets.isMedian && zombieVec.size() - pqEta.size() > 0) {
@@ -499,7 +516,7 @@ Zombie* shootZombies(uint32_t curRound,
                      SimulatorSettings& simSets) {
     uint32_t qCap = simSets.qCap;
     Zombie* res = nullptr;
-    while (qCap > 0 && (!pqEta.empty())) {
+    while (qCap && (!pqEta.empty())) {
         Zombie* zombie = pqEta.top();
         uint32_t damage = min(zombie->hp, qCap);
         zombie->hp -= damage;
