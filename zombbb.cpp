@@ -126,7 +126,8 @@ class StatisticsData {
         : lastKilledHead(1), lastKilledTail(0) {
         lastKilled.push_back(nullptr);
     }
-    void addZombie(Zombie* zombie, SimulatorSettings& simSets);
+    void addDeadZombie(Zombie* zombie, uint32_t statN);
+    void addLivingZombie(Zombie* zombie, uint32_t statN);
     void print(uint32_t curRound, vector<Zombie*>& livingZombies, size_t& tail, SimulatorSettings& simSets);
 };
 
@@ -368,23 +369,21 @@ void readNewZombies(uint32_t curRound,
     }
 }
 
-void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
-    if (zombie->hp == 0) {
-        if (firstKilled.size() < simSets.statN)
-            firstKilled.push_back(zombie);
-        if (lastKilled.size() < simSets.statN + 5) {
-            lastKilled.push_back(zombie);
-            if (lastKilled.size() > simSets.statN + 1)
-                ++lastKilledHead;
-        } else {
-            lastKilled[lastKilledTail] = zombie;
-            ++lastKilledTail;
-            if (lastKilledTail == lastKilled.size())
-                lastKilledTail = 0;
+void StatisticsData::addDeadZombie(Zombie* zombie, uint32_t statN) {
+    if (firstKilled.size() < statN)
+        firstKilled.push_back(zombie);
+    if (lastKilled.size() < statN + 5) {
+        lastKilled.push_back(zombie);
+        if (lastKilled.size() > statN + 1)
             ++lastKilledHead;
-            if (lastKilledHead == lastKilled.size())
-                lastKilledHead = 0;
-        }
+    } else {
+        lastKilled[lastKilledTail] = zombie;
+        ++lastKilledTail;
+        if (lastKilledTail == lastKilled.size())
+            lastKilledTail = 0;
+        ++lastKilledHead;
+        if (lastKilledHead == lastKilled.size())
+            lastKilledHead = 0;
     }
     // pqLessRoundStat.push(zombie);
     // pqMoreRoundStat.push(zombie);
@@ -393,7 +392,32 @@ void StatisticsData::addZombie(Zombie* zombie, SimulatorSettings& simSets) {
     //     pqMoreRoundStat.pop();
     // }
 
-    if (pqLessRoundStat.size() >= simSets.statN) {
+    if (pqLessRoundStat.size() >= statN) {
+        Zombie::LessRoundFirst lessFirst;
+        Zombie::MoreRoundFirst moreFirst;
+        if (lessFirst(zombie, pqMoreRoundStat.top())) {
+            pqMoreRoundStat.pop();
+            pqMoreRoundStat.push(zombie);
+        }
+        if (moreFirst(zombie, pqLessRoundStat.top())) {
+            pqLessRoundStat.pop();
+            pqLessRoundStat.push(zombie);
+        }
+    } else {
+        pqLessRoundStat.push(zombie);
+        pqMoreRoundStat.push(zombie);
+    }
+}
+
+void StatisticsData::addLivingZombie(Zombie* zombie, uint32_t statN) {
+    // pqLessRoundStat.push(zombie);
+    // pqMoreRoundStat.push(zombie);
+    // if (simSets.statN < pqLessRoundStat.size()) {
+    //     pqLessRoundStat.pop();
+    //     pqMoreRoundStat.pop();
+    // }
+
+    if (pqLessRoundStat.size() >= statN) {
         Zombie::LessRoundFirst lessFirst;
         Zombie::MoreRoundFirst moreFirst;
         if (lessFirst(zombie, pqMoreRoundStat.top())) {
@@ -460,7 +484,7 @@ void Zombie::isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& 
         }
     }
     if (simSets.isStatistics) {
-        stat.addZombie(this, simSets);
+        stat.addDeadZombie(this, simSets.statN);
     }
 }
 
@@ -537,7 +561,7 @@ void StatisticsData::print(uint32_t curRound, vector<Zombie*>& livingZombies, si
             continue;
         ++livingZombieCnt;
         livingZombies[i]->round = curRound - livingZombies[i]->round + 1;
-        addZombie(livingZombies[i], simSets);
+        addLivingZombie(livingZombies[i], simSets.statN);
     }
 
     // for (Zombie& zombie : zombieVec) {
