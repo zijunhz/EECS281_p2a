@@ -490,19 +490,38 @@ void Zombie::isDead(uint32_t curRound, StatisticsData& stat, SimulatorSettings& 
         print();
     }
     if (simSets.isMedian) {
-        if ((stat.pqMoreRoundMedian.empty()) || stat.pqMoreRoundMedian.top()->round >= round)
-            stat.pqMoreRoundMedian.push(this);
-        else
-            stat.pqLessRoundMedian.push(this);
+        // if ((stat.pqMoreRoundMedian.empty()) || stat.pqMoreRoundMedian.top()->round >= round)
+        //     stat.pqMoreRoundMedian.push(this);
+        // else
+        //     stat.pqLessRoundMedian.push(this);
 
-        // more.size >= less.size
-        if (stat.pqMoreRoundMedian.size() > stat.pqLessRoundMedian.size() + 1) {
-            stat.pqLessRoundMedian.push(stat.pqMoreRoundMedian.top());
-            stat.pqMoreRoundMedian.pop();
-        }
-        if (stat.pqMoreRoundMedian.size() < stat.pqLessRoundMedian.size()) {
-            stat.pqMoreRoundMedian.push(stat.pqLessRoundMedian.top());
-            stat.pqLessRoundMedian.pop();
+        // // more.size >= less.size
+        // if (stat.pqMoreRoundMedian.size() > stat.pqLessRoundMedian.size() + 1) {
+        //     stat.pqLessRoundMedian.push(stat.pqMoreRoundMedian.top());
+        //     stat.pqMoreRoundMedian.pop();
+        // }
+        // if (stat.pqMoreRoundMedian.size() < stat.pqLessRoundMedian.size()) {
+        //     stat.pqMoreRoundMedian.push(stat.pqLessRoundMedian.top());
+        //     stat.pqLessRoundMedian.pop();
+        // }
+        if (stat.pqMoreRoundMedian.empty()) {
+            stat.pqMoreRoundMedian.push(this);
+        } else if (stat.pqMoreRoundMedian.size() == stat.pqLessRoundMedian.size()) {
+            if (stat.pqLessRoundMedian.top()->round >= round) {
+                stat.pqMoreRoundMedian.push(this);
+            } else {
+                stat.pqMoreRoundMedian.push(stat.pqLessRoundMedian.top());
+                stat.pqLessRoundMedian.pop();
+                stat.pqLessRoundMedian.push(this);
+            }
+        } else {
+            if (stat.pqMoreRoundMedian.top()->round <= round) {
+                stat.pqLessRoundMedian.push(this);
+            } else {
+                stat.pqLessRoundMedian.push(stat.pqMoreRoundMedian.top());
+                stat.pqMoreRoundMedian.pop();
+                stat.pqMoreRoundMedian.push(this);
+            }
         }
     }
     if (simSets.isStatistics) {
@@ -518,6 +537,13 @@ Zombie* shootZombies(uint32_t curRound,
     Zombie* res = nullptr;
     while (qCap && (!pqEta.empty())) {
         Zombie* zombie = pqEta.top();
+        // if (qCap >= zombie->hp) {
+        //     qCap -= zombie->hp;
+        //     zombie->hp = 0;
+        // } else {
+        //     zombie->hp -= qCap;
+        //     break;
+        // }
         uint32_t damage = min(zombie->hp, qCap);
         zombie->hp -= damage;
         qCap -= damage;
